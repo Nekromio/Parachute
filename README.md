@@ -71,6 +71,7 @@ Then follow the path /addons/sourcemod/configs/databases.cfg
 In this file, we insert the necessary column BEFORE the last "}" closing parenthesis
 
 For MySQL
+
 	"parachute"
 	{
 		"driver" "mysql"
