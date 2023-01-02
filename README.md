@@ -4,14 +4,12 @@ The menu of parachutes is different for each team
 Video demonstration
 https://youtu.be/uDPEFDxGIQA
 
-//*******************************************//
+# ru
 
 Плагин создан при поддержки проекта https://ggwp.site/
 Это портал с лучшими моделями для Counter-Strike Source
 
 Ссылка на парашюты https://ggwp.site/product-category/parashjuty/
-
-//*******************************************//
 
 В файле /cfg/sourcemod/parachute_ggwp.cfg есть переменнная
 
@@ -25,7 +23,7 @@ sm_parachute_mysql "0"
 
 В этом файле вставляем нужен столбец ПЕРЕД последней "}" закрывающейся скобкой
 
-# Для MySQL
+Для MySQL
 	"parachute"
 	{ 
 		"driver" "mysql" 
@@ -37,7 +35,7 @@ sm_parachute_mysql "0"
 		"port" "3306"
 	}
 
-# Для SqLite
+Для SqLite
 
 	"parachute_lite"
 	{ 
@@ -54,7 +52,7 @@ sm_parachute_mysql "0"
 Обащаю ваше внимание на то, что для MySQL ключ в databases это "parachute", а для SqLite это "parachute_lite"
 
 
-/// EN
+# EN
 The plugin was created with the support of the project https://ggwp.site/
 This is a portal with the best models for Counter-Strike Source
 
@@ -72,7 +70,7 @@ Then follow the path /addons/sourcemod/configs/databases.cfg
 
 In this file, we insert the necessary column BEFORE the last "}" closing parenthesis
 
-# For MySQL
+For MySQL
 	"parachute"
 	{
 		"driver" "mysql"
@@ -84,7 +82,7 @@ In this file, we insert the necessary column BEFORE the last "}" closing parenth
 		"port" "3306"
 	}
 
-# For SQLite
+For SQLite
 
 	"parachute_lite"
 	{
