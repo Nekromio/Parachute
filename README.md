@@ -25,8 +25,7 @@ sm_parachute_mysql "0"
 
 В этом файле вставляем нужен столбец ПЕРЕД последней "}" закрывающейся скобкой
 
-Для MySQL
-//****//
+# Для MySQL
 	"parachute"
 	{ 
 		"driver" "mysql" 
@@ -37,7 +36,6 @@ sm_parachute_mysql "0"
 		//"timeout" "0" 
 		"port" "3306"
 	}
-//****//
 
 Для SqLite
 //****//
