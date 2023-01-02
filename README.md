@@ -13,9 +13,8 @@ https://youtu.be/uDPEFDxGIQA
 
 В файле /cfg/sourcemod/parachute_ggwp.cfg есть переменнная
 
-// 1 использовать MySQL базу, 0 - использовать SqLite локальную базу
-// -
-sm_parachute_mysql "0"
+// 1 использовать MySQL базу, 0 - использовать SqLite локальную базу  
+sm_parachute_mysql "0"  
 
 Выбираем какой тип подключения вам нужен, MySQL это база данных на стороннем сайте, а SqLite это локальная база сервера
 
@@ -60,9 +59,8 @@ Link to parachutes https://ggwp.site/product-category/parashjuty/
 
 In the file /cfg/sourcemod/parachute_ggwp.cfg there is a variable
 
-// 1 use MySQL database, 0 - use SQLite local database
-// -
-sm_parachute_mysql "0"
+// 1 use MySQL database, 0 - use SQLite local database  
+sm_parachute_mysql "0"  
 
 Choose which type of connection you need, MySQL is a database on a third-party site, and SQLite is a local server database
 
