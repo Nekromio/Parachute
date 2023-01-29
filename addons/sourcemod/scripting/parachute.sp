@@ -4,6 +4,7 @@
 #include <sdktools_stringtables>
 #include <sdktools_functions>
 #include <smartdm>
+#include <sdkhooks>
 
 Database
 	hDatabase;
@@ -19,7 +20,8 @@ bool
 	parachute_exist,
 	inUse[MAXPLAYERS+1],
 	hasPara[MAXPLAYERS+1],
-	hasModel[MAXPLAYERS+1];
+	hasModel[MAXPLAYERS+1],
+	bRecoil[MAXPLAYERS+1];	
 
 Handle
 	hMenu[2];
@@ -50,7 +52,7 @@ public Plugin myinfo =
 	name		= "[Any] Parachute/Парашют",
 	author		= "Nek.'a 2x2 | ggwp.site ",
 	description	= "Меню парашютов своё каждой команде",
-	version		= "1.0.6",
+	version		= "1.0.7",
 	url			= "https://ggwp.site/"
 };
 
@@ -104,7 +106,7 @@ public void OnPluginStart()
 	CreateTimer(60.0, AnoncePr, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE );
 }
 
-public Action AnoncePr(Handle hTimer)
+Action AnoncePr(Handle hTimer)
 {
 	PrintToChatAll("[SM] Меню выбора парашютов □ ▼ ■");
 	PrintToChatAll("[SM] В чат !pr или !parachute");
@@ -156,7 +158,7 @@ public void OnClientDisconnect(int client)
 	CloseParachute(client);
 }
 
-public Action OnTeam(Handle hEvent, const char[] name, bool dontBroadcast)
+void OnTeam(Handle hEvent, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
 	
@@ -209,15 +211,14 @@ void Settings()
 	CloseHandle(hKV);
 }
 
-public Action PlayerDeath(Handle event, const char[] name, bool dontBroadcast)
+void PlayerDeath(Handle event, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 	hasPara[client] = false;
 	EndPara(client);
-	return Plugin_Continue;
 }
 
-public void StartPara(int client, bool open)
+void StartPara(int client, bool open)
 {
 	if(g_iVelocity == -1)
 		return;
@@ -245,22 +246,24 @@ public void StartPara(int client, bool open)
 		if(GetEntityGravity(client) != 0.1)
 			fGravity[client] = GetEntityGravity(client);
 		SetEntityGravity(client, 0.1);
+		bRecoil[client] = true;
 		
 		if(open)
 			OpenParachute(client);
 	}
 }
 
-public void EndPara(int client)
+void EndPara(int client)
 {
 	if(GetEntityGravity(client) != 0.1)
 		fGravity[client] = GetEntityGravity(client);
 	SetEntityGravity(client, fGravity[client]);
+	bRecoil[client] = false;
 	inUse[client]=false;
 	CloseParachute(client);
 }
 
-public void OpenParachute(int client)
+void OpenParachute(int client)
 {
 	if(parachute_exist)
 		return;
@@ -274,7 +277,7 @@ public void OpenParachute(int client)
 	TeleportParachute(client);
 }
 
-public void TeleportParachute(int client)
+void TeleportParachute(int client)
 {
 	if(hasModel[client] && IsValidEntity(Parachute_Ent[client]))
 	{
@@ -286,7 +289,7 @@ public void TeleportParachute(int client)
 	}
 }
 
-public void CloseParachute(int client)
+void CloseParachute(int client)
 {
 	if(hasModel[client] && IsValidEntity(Parachute_Ent[client]) && IsValidEdict(Parachute_Ent[client]))
 	{
@@ -295,7 +298,7 @@ public void CloseParachute(int client)
 	}
 }
 
-public void Check(int client)
+void Check(int client)
 {
 	static float speed[3];
 	GetEntDataVector(client,g_iVelocity,speed);

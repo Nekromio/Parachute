@@ -36,7 +36,7 @@ public void DatabaseConnect(any data)
 	}
 }
 
-public void ConnectCallBack(Database hDB, const char[] szError, any data) // Пришел результат соединения
+void ConnectCallBack(Database hDB, const char[] szError, any data) // Пришел результат соединения
 {
 	if (hDB == null || szError[0])	// Соединение не удачное
 	{

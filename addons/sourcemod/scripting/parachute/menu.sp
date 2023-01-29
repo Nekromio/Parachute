@@ -33,7 +33,7 @@ void CreatMenuCT()
 	}
 }
 
-public int MenuT(Menu hMenuLocal, MenuAction action, int client, int iItem)
+int MenuT(Menu hMenuLocal, MenuAction action, int client, int iItem)
 {
 	char sModels[512];
 
@@ -56,9 +56,10 @@ public int MenuT(Menu hMenuLocal, MenuAction action, int client, int iItem)
 		//hMenuLocal.Close();
 		//delete hMenu[0];
 	}
+	return 0;
 }
 
-public int MenuCT(Menu hMenuLocal, MenuAction action, int client, int iItem)
+int MenuCT(Menu hMenuLocal, MenuAction action, int client, int iItem)
 {
 	char sModels[512];
 
@@ -81,5 +82,6 @@ public int MenuCT(Menu hMenuLocal, MenuAction action, int client, int iItem)
 		//hMenuLocal.Close();
 		//delete hMenu[1];
 	}
+	return 0;
 }
 
