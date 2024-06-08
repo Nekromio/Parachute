@@ -52,7 +52,7 @@ public Plugin myinfo =
 	name		= "[Any] Parachute/Парашют",
 	author		= "Nek.'a 2x2 | ggwp.site ",
 	description	= "Меню парашютов своё каждой команде",
-	version		= "1.0.7",
+	version		= "1.0.8",
 	url			= "https://ggwp.site/"
 };
 
@@ -103,16 +103,16 @@ public void OnPluginStart()
 	
 	RequestFrame(DatabaseConnect);
 	
-	CreateTimer(60.0, AnoncePr, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE );
+	//CreateTimer(60.0, AnoncePr, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE );
 }
-
+/*
 Action AnoncePr(Handle hTimer)
 {
 	PrintToChatAll("[SM] Меню выбора парашютов □ ▼ ■");
 	PrintToChatAll("[SM] В чат !pr или !parachute");
 	PrintToChatAll("[SM] Меню выбора парашютов □ ▲ ■");
 }
-
+*/
 public void OnClientPostAdminCheck(int client)
 {
 	if(!IsFakeClient(client))
@@ -158,7 +158,7 @@ public void OnClientDisconnect(int client)
 	CloseParachute(client);
 }
 
-void OnTeam(Handle hEvent, const char[] name, bool dontBroadcast)
+void OnTeam(Event hEvent, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
 	
@@ -268,32 +268,34 @@ void OpenParachute(int client)
 	if(parachute_exist)
 		return;
 
-	Parachute_Ent[client] = CreateEntityByName("prop_dynamic_override");
-	DispatchKeyValue(Parachute_Ent[client], "model", sClientModel[0][client]);
-	SetEntityMoveType(Parachute_Ent[client], MOVETYPE_NOCLIP);
-	DispatchSpawn(Parachute_Ent[client]);
-
+	int index = CreateEntityByName("prop_dynamic_override");
+	DispatchKeyValue(index, "model", sClientModel[0][client]);
+	SetEntityMoveType(index, MOVETYPE_NOCLIP);
+	DispatchSpawn(index);
+	Parachute_Ent[client] = EntIndexToEntRef(index);
 	hasModel[client] = true;
 	TeleportParachute(client);
 }
 
 void TeleportParachute(int client)
 {
-	if(hasModel[client] && IsValidEntity(Parachute_Ent[client]))
+	int index = EntRefToEntIndex(Parachute_Ent[client]);
+	if(hasModel[client] && IsValidEntity(index))
 	{
 		float Client_Origin[3], Client_Angles[3], Parachute_Angles[3] = {0.0, 0.0, 0.0};
 		GetClientAbsOrigin(client, Client_Origin);
 		GetClientAbsAngles(client, Client_Angles);
 		Parachute_Angles[1] = Client_Angles[1];
-		TeleportEntity(Parachute_Ent[client], Client_Origin, Parachute_Angles, NULL_VECTOR);
+		TeleportEntity(index, Client_Origin, Parachute_Angles, NULL_VECTOR);
 	}
 }
 
 void CloseParachute(int client)
 {
-	if(hasModel[client] && IsValidEntity(Parachute_Ent[client]) && IsValidEdict(Parachute_Ent[client]))
+	int index = EntRefToEntIndex(Parachute_Ent[client]);
+	if(hasModel[client] && IsValidEntity(index) && IsValidEdict(index))
 	{
-		RemoveEdict(Parachute_Ent[client]);
+		RemoveEdict(index);
 		hasModel[client] = false;
 	}
 }
