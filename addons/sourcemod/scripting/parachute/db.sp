@@ -1,85 +1,84 @@
-
-public Action CmdParechuteMenu(int client, any argc)
+void Custom_SQLite()
 {
-	if(!client || IsFakeClient(client))
-		return Plugin_Continue;
-		
-	if(GetClientTeam(client) < 2 || 3 < GetClientTeam(client))
+	KeyValues hKv = new KeyValues("");
+	hKv.SetString("driver", "sqlite");
+	hKv.SetString("host", "localhost");
+	hKv.SetString("database", "parachute");
+	hKv.SetString("user", "root");
+	hKv.SetString("pass", "");
+	
+	char sError[255];
+	hDatabase = SQL_ConnectCustom(hKv, sError, sizeof(sError), true);
+
+	if(sError[0])
 	{
-		PrintToChat(client, "Вы должны быть в команде для активации меню парашюта !");
-		return Plugin_Continue;
+		SetFailState("Ошибка подключения к локальной базе SQLite: %s", sError);
 	}
-		
-	if(!IsPlayerAlive(client))
-	{
-		PrintToChat(client, "Вы должны быть живы для активации меню парашюта !");
-		return Plugin_Continue;
-	}
-		
-	if(GetClientTeam(client) == 2)
-		DisplayMenu(hMenu[0], client, MENU_TIME_FOREVER);
-	if(GetClientTeam(client) == 3)
-		DisplayMenu(hMenu[1], client, MENU_TIME_FOREVER);
-		
-	return Plugin_Handled;
+	hKv.Close();
+
+	First_ConnectionSQLite();
 }
 
-public void DatabaseConnect(any data)
+void First_ConnectionSQLite()
 {
-	if(cvMySQl.BoolValue)
+	SQL_LockDatabase(hDatabase);
+	char sQuery[1024];
+	FormatEx(sQuery, sizeof(sQuery), "CREATE TABLE IF NOT EXISTS `pr_users` (\
+		`id` INTEGER PRIMARY KEY,\
+		`steam_id` VARCHAR(32),\
+		`name_t` VARCHAR(512),\
+		`mdl_t` VARCHAR(512),\
+		`name_ct` VARCHAR(512),\
+		`mdl_ct` VARCHAR(512))");
+
+	hDatabase.Query(First_ConnectionSQLite_Callback, sQuery);
+
+	SQL_UnlockDatabase(hDatabase);
+	hDatabase.SetCharset("utf8");
+}
+
+public void First_ConnectionSQLite_Callback(Database hDb, DBResultSet results, const char[] sError, any iUserID)
+{
+	if (hDb == null || sError[0])
 	{
-		Database.Connect(ConnectCallBack, "parachute");		//Подвключаемся к базе данных
-	}
-	else
-	{
-		Database.Connect(ConnectCallBack, "parachute_lite");		//Подвключаемся к базе данных
+		SetFailState("Ошибка подключения к базе: %s", sError);
+		return;
 	}
 }
 
-void ConnectCallBack(Database hDB, const char[] szError, any data) // Пришел результат соединения
+void ConnectCallBack(Database hDB, const char[] szError, any data)
 {
-	if (hDB == null || szError[0])	// Соединение не удачное
+	if (hDB == null || szError[0])
 	{
-		SetFailState("Ошибка подключения к базе: %s", szError);		// Отключаем плагин
+		SetFailState("Ошибка подключения к базе: %s", szError);
 		return;
 	}
 	
 	char sQuery[1024];
 
-	hDatabase = hDB;		//
+	hDatabase = hDB;
 	SQL_LockDatabase(hDatabase);
-	if(!cvMySQl.BoolValue) 
-		FormatEx(sQuery, sizeof(sQuery), "CREATE TABLE IF NOT EXISTS `pr_users` (\
-		`id` INTEGER PRIMARY KEY,\
-		`steam_id` VARCHAR(32),\
-		`key_t` VARCHAR(512),\
-		`value_t` VARCHAR(512),\
-		`key_ct` VARCHAR(512),\
-		`value_ct` VARCHAR(512))");
-	else
-	{
-		FormatEx(sQuery, sizeof(sQuery), "CREATE TABLE IF NOT EXISTS `pr_users` (\
+
+	FormatEx(sQuery, sizeof(sQuery), "CREATE TABLE IF NOT EXISTS `pr_users` (\
 		`id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT ,\
 		`steam_id` VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL ,\
-		`key_t` VARCHAR(512) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL ,\
-		`value_t` VARCHAR(512) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL ,\
-		`key_ct` VARCHAR(512) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL ,\
-		`value_ct` VARCHAR(512) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL ,\
+		`name_t` VARCHAR(512) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL ,\
+		`mdl_t` VARCHAR(512) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL ,\
+		`name_ct` VARCHAR(512) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL ,\
+		`mdl_ct` VARCHAR(512) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL ,\
 		UNIQUE `id` (`id`)) ENGINE = MyISAM CHARSET=utf8 COLLATE utf8_general_ci;");
-		LogToFile(sFile, "Запрос создание таблицы сформирован");
-	}
+
 	
-	hDatabase.Query(SQL_Callback_SelectClient2, sQuery);
-	//LogToFile(sFile, "[\n[%s]\n]", sQuery);
+	hDatabase.Query(SQL_Callback_CreateTable, sQuery);
 	SQL_UnlockDatabase(hDatabase);
-	hDatabase.SetCharset("utf8"); // Устанавливаем кодировку
+	hDatabase.SetCharset("utf8");
 }
 
-public void SQL_Callback_SelectClient2(Database hDatabaseLocal, DBResultSet results, const char[] sError, any iUserID) // Обратный вызов
+public void SQL_Callback_CreateTable(Database hDatabaseLocal, DBResultSet results, const char[] sError, any iUserID)
 {
 	if(sError[0])
 	{
-		LogError("SQL_Callback_SelectClient: %s", sError);	//
+		LogError("SQL_Callback_CreateTable: %s", sError);	//
 		return;
 	}
 }
@@ -92,46 +91,45 @@ public void SQL_Callback_SelectClient(Database hDatabaseLocal, DBResultSet hResu
 		return; //
 	}
 	
+	char sResult[512];
+
 	int client = GetClientOfUserId(iUserID);
+
 	if(client)
 	{
-		char sQuery[512];
 		if(hResults.FetchRow())	// Игрок есть в базе
 		{
-			char sResult[512];
-			
-			hResults.FetchString(0, sResult, sizeof(sResult));
-			sSqlInfo[0][client] = sResult;
-			
-			hResults.FetchString(1, sResult, sizeof(sResult));
-			sSqlInfo[1][client] = sResult;
-			
-			hResults.FetchString(2, sResult, sizeof(sResult));
-			sSqlInfo[2][client] = sResult;
-			
-			hResults.FetchString(3, sResult, sizeof(sResult));
-			sSqlInfo[3][client] = sResult;
+			for(int i = 0; i < 4; i++)
+			{
+				hResults.FetchString(i, sResult, sizeof(sResult));
+				ResultData(client, sResult, i);
+			}
 		}
 		else
 		{
-			char sKey[512];
-			GetArrayString(hArray[0], 0, sKey, sizeof(sKey));		//
-			sSqlInfo[0][client] = sKey;
-			
-			GetArrayString(hArray[1], 0, sKey, sizeof(sKey));		//
-			sSqlInfo[1][client] = sKey;
-			
-			GetArrayString(hArray[2], 0, sKey, sizeof(sKey));		//
-			sSqlInfo[2][client] = sKey;
-			
-			GetArrayString(hArray[3], 0, sKey, sizeof(sKey));		//
-			sSqlInfo[3][client] = sKey;
+			for(int i = 0; i < 4; i++)
+			{
+				GetArrayString(hArray[i], 0, sResult, sizeof(sResult));
+				ResultData(client, sResult, i);
+			}
 
-			char sSteam[32];
+			char sSteam[32], sQuery[512];
 			GetClientAuthId(client, AuthId_Steam2, sSteam, sizeof(sSteam));
-			FormatEx(sQuery, sizeof(sQuery), "INSERT INTO `pr_users` (`steam_id`, `key_t`, `value_t`, `key_ct`, `value_ct`) VALUES ( '%s', '%s', '%s', '%s', '%s');", sSteam, sSqlInfo[0][client], sSqlInfo[1][client], sSqlInfo[2][client], sSqlInfo[3][client]);
+			FormatEx(sQuery, sizeof(sQuery), "INSERT INTO `pr_users` (`steam_id`, `name_t`, `mdl_t`, `name_ct`, `mdl_ct`) VALUES ( '%s', '%s', '%s', '%s', '%s');",
+			 sSteam, user[client].name_t, user[client].mdl_t, user[client].name_ct, user[client].mdl_ct);
 			hDatabase.Query(SQL_Callback_CreateClient, sQuery, GetClientUserId(client));
 		}
+	}
+}
+
+stock void ResultData(int client, char result[512], int index)
+{
+	switch(index)
+	{
+		case 0: Format(user[client].name_t, 512, result);
+		case 1: Format(user[client].mdl_t, 512, result);
+		case 2: Format(user[client].name_ct, 512, result);
+		case 3: Format(user[client].mdl_ct, 512, result);
 	}
 }
 

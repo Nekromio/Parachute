@@ -1,87 +1,146 @@
-void CreatMenuT()
+void CreateMenu_Parashute(int client)
 {
-	char sModels[512];
-	hMenu[0] = CreateMenu(MenuT);
-	SetMenuTitle(hMenu[0], "Меню парашютов");
+	char buffer[512];
+	hMenu[client] = new Menu(Callback_MenuParashute);
+	hMenu[client].SetTitle("Меню парашюта");
+	
+	FormatEx(buffer, sizeof(buffer), "Модель за Т [%s]", user[client].name_t);
+	hMenu[client].AddItem("item1", buffer);
 
-	for(int i; i < GetArraySize(hArray[0]); i++)
-	{
-		GetArrayString(hArray[0], i, sModels, sizeof(sModels));
-		if(sModels[2])
-		{
-			//hMenu.AddItem("item1", sModels);
-			AddMenuItem(hMenu[0], sModels, sModels);
-			//PrintToChatAll("Итем = [%s]", sModels);
-		}
-	}
+	FormatEx(buffer, sizeof(buffer), "Модель за КТ [%s]", user[client].name_ct);
+	hMenu[client].AddItem("item2", buffer);
+
+	hMenu[client].Display(client, 30);
 }
 
-void CreatMenuCT()
+public int Callback_MenuParashute(Menu menu, MenuAction action, int client, int item)
 {
-	char sModels[512];
-	hMenu[1] = CreateMenu(MenuCT);
-	SetMenuTitle(hMenu[1], "Меню парашютов");
+    switch(action)
+    {
+		case MenuAction_End:
+        {
+            delete menu;
+        }
+		case MenuAction_Select:
+        {
+			if(!IsValidClient(client))
+				return 0;
 
-	for(int i; i < GetArraySize(hArray[2]); i++)
-	{
-		GetArrayString(hArray[2], i, sModels, sizeof(sModels));
-		if(sModels[0])
-		{
-			//hMenu.AddItem("item1", sModels);
-			AddMenuItem(hMenu[1], sModels, sModels);
-		}
-	}
-}
-
-int MenuT(Menu hMenuLocal, MenuAction action, int client, int iItem)
-{
-	char sModels[512];
-
-	if(action == MenuAction_Select)
-	{
-		GetArrayString(hArray[1], iItem, sModels, sizeof(sModels));		//Вытаскиваем из массива нужную модель для Т
-		sClientModel[1][client] = sModels;		//Запоминаем для этого игрока модель для команды Т
-		sClientModel[0][client] = sClientModel[1][client];		//Устанавливаем модель для отображения
-		
-		GetArrayString(hArray[0], iItem, sSqlInfo[0][client], sizeof(sSqlInfo[]));		//Вытаскиваем из массива нужную модель для СТ
-		sSqlInfo[1][client] = sClientModel[1][client];
-		char sQuery[512], sSteam[32];
-		GetClientAuthId(client, AuthId_Steam2, sSteam, sizeof(sSteam));
-
-		FormatEx(sQuery, sizeof(sQuery), "UPDATE `pr_users` SET `key_t` = '%s', `value_t` = '%s' WHERE `steam_id` = '%s';", sSqlInfo[0][client], sSqlInfo[1][client], sSteam);	// Формируем запрос
-		hDatabase.Query(SQL_Callback_CheckError, sQuery);
-	}
-	else if(action == MenuAction_End)
-	{
-		//hMenuLocal.Close();
-		//delete hMenu[0];
+            switch(item)
+    		{
+				case 0:
+				{
+					CreatMenu_T(client);
+				}
+				case 1:
+				{
+					CreatMenu_CT(client);
+				}
+			}
+        }
 	}
 	return 0;
 }
 
-int MenuCT(Menu hMenuLocal, MenuAction action, int client, int iItem)
+void CreatMenu_T(int client)
 {
-	char sModels[512];
+	char buffer[512];
+	hMenu[client] = new Menu(Callback_MenuT);
+	hMenu[client].SetTitle("Выбор парашюта Т");
 
-	if(action == MenuAction_Select)
+	for(int i = 0; i < GetArraySize(hArray[NAME_T]); i++)
 	{
-		GetArrayString(hArray[3], iItem, sModels, sizeof(sModels));		//Вытаскиваем из массива нужную модель для СТ
-		sClientModel[2][client] = sModels;		//Запоминаем для этого игрока модель для команды CТ
-		sClientModel[0][client] = sClientModel[2][client];		//Устанавливаем модель для отображения
-		
-		GetArrayString(hArray[2], iItem, sSqlInfo[2][client], sizeof(sSqlInfo[]));		//Вытаскиваем из массива нужную модель для СТ
-		sSqlInfo[3][client] = sClientModel[2][client];
-		char sQuery[512], sSteam[32];
-		GetClientAuthId(client, AuthId_Steam2, sSteam, sizeof(sSteam));
-
-		FormatEx(sQuery, sizeof(sQuery), "UPDATE `pr_users` SET `key_ct` = '%s', `value_ct` = '%s' WHERE `steam_id` = '%s';", sSqlInfo[2][client], sSqlInfo[3][client], sSteam);	// Формируем запрос
-		hDatabase.Query(SQL_Callback_CheckError, sQuery);
+		hArray[NAME_T].GetString(i, buffer, sizeof(buffer));
+		if(buffer[0])
+		{
+			hMenu[client].AddItem("item1", buffer);
+		}
 	}
-	else if(action == MenuAction_End)
-	{
-		//hMenuLocal.Close();
-		//delete hMenu[1];
+	hMenu[client].ExitBackButton = true;
+
+	hMenu[client].Display(client, 30);
+}
+
+public int Callback_MenuT(Menu menu, MenuAction action, int client, int item)
+{
+    switch(action)
+    {
+		case MenuAction_End:
+        {
+            delete menu;
+        }
+		case MenuAction_Cancel:
+		{
+			CreateMenu_Parashute(client);
+		}
+		case MenuAction_Select:
+        {
+			if(!IsValidClient(client))
+				return 0;
+
+			hArray[MDL_T].GetString(item, user[client].mdl_t, 512);
+			hArray[NAME_T].GetString(item, user[client].name_t, 512);
+
+			char sQuery[512], sSteam[32];
+			GetClientAuthId(client, AuthId_Steam2, sSteam, sizeof(sSteam));
+
+			FormatEx(sQuery, sizeof(sQuery), "UPDATE `pr_users` SET `name_t` = '%s', `mdl_t` = '%s' WHERE `steam_id` = '%s';", user[client].name_t, user[client].mdl_t, sSteam);	// Формируем запрос
+			hDatabase.Query(SQL_Callback_CheckError, sQuery);
+
+			CreateMenu_Parashute(client);
+        }
 	}
 	return 0;
 }
 
+void CreatMenu_CT(int client)
+{
+	char buffer[512];
+	hMenu[client] = new Menu(Callback_MenuCT);
+	hMenu[client].SetTitle("Выбор парашюта КТ");
+
+	for(int i = 0; i < GetArraySize(hArray[NAME_CT]); i++)
+	{
+		hArray[NAME_CT].GetString(i, buffer, sizeof(buffer));
+		if(buffer[0])
+		{
+			hMenu[client].AddItem("item1", buffer);
+		}
+	}
+
+	hMenu[client].ExitBackButton = true;
+	hMenu[client].Display(client, 30);
+}
+
+public int Callback_MenuCT(Menu menu, MenuAction action, int client, int item)
+{
+    switch(action)
+    {
+		case MenuAction_End:
+        {
+            delete menu;
+        }
+		case MenuAction_Cancel:
+		{
+			CreateMenu_Parashute(client);
+		}
+		case MenuAction_Select:
+        {
+			if(!IsValidClient(client))
+				return 0;
+
+			hArray[MDL_CT].GetString(item, user[client].mdl_ct, 512);
+			hArray[NAME_CT].GetString(item, user[client].name_ct, 512);
+	
+
+			char sQuery[512], sSteam[32];
+			GetClientAuthId(client, AuthId_Steam2, sSteam, sizeof(sSteam));
+
+			FormatEx(sQuery, sizeof(sQuery), "UPDATE `pr_users` SET `name_ct` = '%s', `mdl_ct` = '%s' WHERE `steam_id` = '%s';", user[client].name_ct, user[client].mdl_ct, sSteam);	// Формируем запрос
+			hDatabase.Query(SQL_Callback_CheckError, sQuery);
+
+			CreateMenu_Parashute(client);
+        }
+	}
+	return 0;
+}

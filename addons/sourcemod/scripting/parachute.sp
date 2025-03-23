@@ -12,7 +12,6 @@ Database
 ConVar
 	cvFallSpeed,
 	cvLinear,
-	cvMySQl,
 	cvDecrease;
 	
 bool
@@ -21,13 +20,21 @@ bool
 	inUse[MAXPLAYERS+1],
 	hasPara[MAXPLAYERS+1],
 	hasModel[MAXPLAYERS+1],
-	bRecoil[MAXPLAYERS+1];	
+	bRecoil[MAXPLAYERS+1];
 
-Handle
-	hMenu[2];
+Menu
+	hMenu[MAXPLAYERS+1];
 	
 KeyValues
 	hKV;
+
+enum
+{
+	NAME_T,
+	MDL_T,
+	NAME_CT,
+	MDL_CT
+}
 
 ArrayList
 	hArray[4];		//0 Имя модели, 1 путь мдл, 2 имя модели кт, 3 путь мдл
@@ -40,9 +47,25 @@ float
 	fGravity[MAXPLAYERS+1];	//
 	
 char
-	sClientModel[3][MAXPLAYERS+1][512],		//0 Какая модель у игрока в данный момент, 1 какая модель у игрока для команды Т, 2 какая модель у игрока дял КТ
-	sFile[PLATFORM_MAX_PATH],
-	sSqlInfo[4][MAXPLAYERS+1][512];
+	sFile[PLATFORM_MAX_PATH];
+
+enum struct Settings
+{
+	char name_t[512];
+	char mdl_t[512];
+	char name_ct[512];
+	char mdl_ct[512];
+
+	void Reset()
+	{
+		this.name_t = "";
+		this.mdl_t = "";
+		this.name_ct = "";
+		this.mdl_ct = "";
+	}
+}
+
+Settings user[MAXPLAYERS+1];
 
 #include "parachute/db.sp"
 #include "parachute/menu.sp"
@@ -52,28 +75,19 @@ public Plugin myinfo =
 	name		= "[Any] Parachute/Парашют",
 	author		= "Nek.'a 2x2 | ggwp.site ",
 	description	= "Меню парашютов своё каждой команде",
-	version		= "1.0.8",
-	url			= "https://ggwp.site/"
+	version		= "1.0.9",
+	url			= "ggwp.site || vk.com/nekromio || t.me/sourcepwn "
 };
 
 public void OnPluginStart()
 {
-	hArray[0] = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
-	hArray[1] = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
-	hArray[2] = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
-	hArray[3] = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
+	for(int i = 0; i < 4; i++) hArray[i] = new ArrayList(ByteCountToCells(512));
 	
 	cvFallSpeed = CreateConVar("sm_parachute_fallspeed", "100", "Скорость парашюта", _, true, 0.0, true, 9999.0);
-	
 	cvLinear = CreateConVar("sm_parachute_linear", "1", "Включить/Выключить линейну скорость", _, true, _, true, 1.0);
-	
-	cvMySQl = CreateConVar("sm_parachute_mysql", "1", "1 использовать MySQL базу, 0 - использовать SqLite локальную базу", _, true, _, true, 1.0);
-	
-	cvDecrease = CreateConVar("sm_parachute_decrease", "50", "dont use Realistic velocity-decrease - x: sets the velocity-decrease.", _, true, 0.0, true, 9999.0);
+	cvDecrease = CreateConVar("sm_parachute_decrease", "50", "Не используйте реалистичное снижение скорости — параметр x задаёт степень уменьшения скорости.", _, true, 0.0, true, 9999.0);
 	
 	AutoExecConfig(true, "parachute_ggwp");
-	
-	HookEvent("player_team", OnTeam, EventHookMode_Pre);
 
 	g_iVelocity	= FindSendPropInfo("CBasePlayer", "m_vecVelocity[0]");
 	
@@ -90,60 +104,59 @@ public void OnPluginStart()
 		CloseHandle(hFile);
 	}
 	
-	RegConsoleCmd("sm_pr", CmdParechuteMenu);
-	RegConsoleCmd("sm_parachute", CmdParechuteMenu);
+	RegConsoleCmd("sm_pr", Cmd_ShowMenu);
+	RegConsoleCmd("sm_parachute", Cmd_ShowMenu);
 	
-	Settings();
-	CreatMenuCT();
-	CreatMenuT();
+	SettingsCfg();
 	
 	HookEvent("player_death", PlayerDeath);
 	
 	BuildPath(Path_SM, sFile, sizeof(sFile), "logs/parachute.log");
-	
-	RequestFrame(DatabaseConnect);
-	
-	//CreateTimer(60.0, AnoncePr, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE );
 }
-/*
-Action AnoncePr(Handle hTimer)
+
+public void OnConfigsExecuted()
 {
-	PrintToChatAll("[SM] Меню выбора парашютов □ ▼ ■");
-	PrintToChatAll("[SM] В чат !pr или !parachute");
-	PrintToChatAll("[SM] Меню выбора парашютов □ ▲ ■");
+	if(SQL_CheckConfig("parachute"))
+	{
+		Database.Connect(ConnectCallBack, "parachute");
+	}
+	else
+	{
+		Custom_SQLite();
+	}
 }
-*/
+
 public void OnClientPostAdminCheck(int client)
 {
-	if(!IsFakeClient(client))
-	{
-		char sQuery[512], sSteam[32];
-		GetClientAuthId(client, AuthId_Steam2, sSteam, sizeof(sSteam), true);
-		FormatEx(sQuery, sizeof(sQuery), "SELECT `key_t`, `value_t`, `key_ct`, `value_ct` FROM `pr_users` WHERE `steam_id` = '%s';", sSteam);	// Формируем запрос
-		hDatabase.Query(SQL_Callback_SelectClient, sQuery, GetClientUserId(client));
-	}
+	if(IsFakeClient(client))
+		return;
+	
+	//LogToFile(sFile, "Игрок [%N] запрос отправлен", client);
+	char sQuery[512], sSteam[32];
+	GetClientAuthId(client, AuthId_Steam2, sSteam, sizeof(sSteam), true);
+	FormatEx(sQuery, sizeof(sQuery), "SELECT `name_t`, `mdl_t`, `name_ct`, `mdl_ct` FROM `pr_users` WHERE `steam_id` = '%s';", sSteam);	// Формируем запрос
+	hDatabase.Query(SQL_Callback_SelectClient, sQuery, GetClientUserId(client));
+	//LogToFile(sFile, "Игрок [%N] запрос завершён", client);
 }
 
 public void OnMapStart()
 {
-	char sModels[2][512];
-	for(int i; i < GetArraySize(hArray[1]); i++)
+	char sModel[512];
+	int arraysToProcess[] = {1, 3};
+
+	for (int j = 0; j < sizeof(arraysToProcess); j++)
 	{
-		GetArrayString(hArray[1], i, sModels[0], sizeof(sModels[]));
-		if(sModels[0][0])
+		int index = arraysToProcess[j];
+		int size = GetArraySize(hArray[index]);
+
+		for (int i = 0; i < size; i++)
 		{
-			Downloader_AddFileToDownloadsTable(sModels[0]);
-			PrecacheModel(sModels[0], true);
-		}
-	}
-	
-	for(int i; i < GetArraySize(hArray[3]); i++)
-	{
-		GetArrayString(hArray[3], i, sModels[1], sizeof(sModels[]));
-		if(sModels[1][0])
-		{
-			Downloader_AddFileToDownloadsTable(sModels[1]);
-			PrecacheModel(sModels[1], true);
+			hArray[index].GetString(i, sModel, sizeof(sModel));
+			if (sModel[0])
+			{
+				Downloader_AddFileToDownloadsTable(sModel);
+				PrecacheModel(sModel, true);
+			}
 		}
 	}
 }
@@ -155,24 +168,11 @@ public void OnClientPutInServer(int client)
 
 public void OnClientDisconnect(int client)
 {
+	user[client].Reset();
 	CloseParachute(client);
 }
 
-void OnTeam(Event hEvent, const char[] name, bool dontBroadcast)
-{
-	int client = GetClientOfUserId(GetEventInt(hEvent, "userid"));
-	
-	if(GetEventInt(hEvent, "team") == 2)
-	{
-		sClientModel[0][client] = sSqlInfo[1][client];
-	}
-	else if(GetEventInt(hEvent, "team") == 3)
-	{
-		sClientModel[0][client] = sSqlInfo[3][client];
-	}
-}
-
-void Settings()
+void SettingsCfg()
 {
 	char sKey[512], sValue[512];
 	
@@ -211,9 +211,9 @@ void Settings()
 	CloseHandle(hKV);
 }
 
-void PlayerDeath(Handle event, const char[] name, bool dontBroadcast)
+void PlayerDeath(Event hEvent, const char[] name, bool dontBroadcast)
 {
-	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	int client = GetClientOfUserId(hEvent.GetInt("userid"));
 	hasPara[client] = false;
 	EndPara(client);
 }
@@ -268,8 +268,13 @@ void OpenParachute(int client)
 	if(parachute_exist)
 		return;
 
+	int team = GetClientTeam(client);
+
+	if(team < 2)
+		return;
+
 	int index = CreateEntityByName("prop_dynamic_override");
-	DispatchKeyValue(index, "model", sClientModel[0][client]);
+	DispatchKeyValue(index, "model", team - 2 ? user[client].mdl_t : user[client].mdl_ct);
 	SetEntityMoveType(index, MOVETYPE_NOCLIP);
 	DispatchSpawn(index);
 	Parachute_Ent[client] = EntIndexToEntRef(index);
@@ -343,7 +348,8 @@ stock int GetNextSpaceCount(char[] text, int CurIndex)
 	int len = strlen(text);
 	for(int i=CurIndex;i<len;i++)
 	{
-		if(text[i] == ' ') break;
+		if(text[i] == ' ')
+			break;
 		Count++;
 	}
 	return Count;
@@ -362,4 +368,19 @@ public void CvarChange_Model(Handle cvar, const char[] oldvalue, const char[] ne
 		for(int i = 1; i <= MaxClients; i++)
 			if(IsClientInGame(i) && IsPlayerAlive(i))
 				CloseParachute(i);
+}
+
+stock bool IsValidClient(int client)
+{
+	return 0 < client <= MaxClients && IsClientInGame(client);
+}
+
+Action Cmd_ShowMenu(int client, int arg)
+{
+	if(!IsValidClient(client) || IsFakeClient(client))
+		return Plugin_Continue;
+	
+	CreateMenu_Parashute(client);
+		
+	return Plugin_Handled;
 }
