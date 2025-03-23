@@ -11,7 +11,7 @@ https://youtu.be/uDPEFDxGIQA
 
 Ссылка на парашюты https://ggwp.site/product-category/parashjuty/
 
-Для MySQL идём по пути /addons/sourcemod/configs/databases.cfg****
+Для MySQL идём по пути /addons/sourcemod/configs/databases.cfg
 
 	"parachute"
 	{ 
